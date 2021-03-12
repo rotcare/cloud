@@ -9,6 +9,7 @@ export interface Serverless {
     // 所有的函数都共享同一份 bundle 后的 sharedLayer
     // 所以这里只需要提供函数名就可以了，不需要给函数再额外提供实现代码
     createFunction(functionName: string): Promise<void>;
+    invokeFunction(functionName: string): Promise<void>;
 }
 
 // 把服务端代码用 http/https 接口暴露到互联网
