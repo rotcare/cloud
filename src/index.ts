@@ -14,12 +14,12 @@ export interface Serverless {
 // 把服务端代码用 http/https 接口暴露到互联网
 export interface ApiGateway {
     createRoute(options: {
-        projectPackageName: string,
         path: string;
         httpMethod: string;
         // reference Serverless function
         functionName: string;
     }): Promise<void>;
+    reload(options: { projectPackageName: string }): Promise<void>;
 }
 
 // 把各种云计算提供的部署接口做一个公共抽象
