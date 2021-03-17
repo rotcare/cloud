@@ -1,3 +1,7 @@
+import type { IoConf } from '@rotcare/io';
+import { Model } from '@rotcare/codegen';
+import * as path from 'path';
+
 // 对象存储，用 http/https 提供 html 页面和 js 源代码
 export interface ObjectStorage {
     putObject(path: string, content: string): Promise<void>;
@@ -28,4 +32,42 @@ export interface Cloud {
     objectStorage: ObjectStorage;
     serverless: Serverless;
     apiGateway: ApiGateway;
+}
+
+export interface SERVERLESS_TYPE {
+    ioConf: IoConf;
+    functions: Record<string, Function>;
+}
+
+declare const SERVERLESS: SERVERLESS_TYPE;
+
+export function generateServerlessFunctions(models: Model[]): SERVERLESS_TYPE['functions'] {
+    const lines = [
+        `
+        const functions = {};
+functions.migrate = new Impl.HttpRpcServer(SERVERLESS, () => import('@motherboard/Migrate'), 'Migrate', 'migrate').handler;`,
+    ];
+    models.sort((a, b) => a.qualifiedName.localeCompare(b.qualifiedName));
+    for (const model of models) {
+        if (model.archetype !== 'ActiveRecord' && model.archetype !== 'Gateway') {
+            continue;
+        }
+        const services = [...model.staticProperties.map(p => p.name), ...model.staticMethods.map(m => m.name)]
+        for (const service of services) {
+            const className = path.basename(model.qualifiedName);
+            lines.push(
+                [
+                    `functions.${service} = new Impl.HttpRpcServer(SERVERLESS, `,
+                    `() => import('@motherboard/${model.qualifiedName}'), `,
+                    `'${className}', '${service}').handler;`,
+                ].join(''),
+            );
+        }
+    }
+    lines.push('return functions;');
+    return lines.join('\n') as any;
+}
+
+export function registerServerless(options: typeof SERVERLESS) {
+    Object.assign(SERVERLESS, options);
 }
