@@ -42,22 +42,23 @@ export interface SERVERLESS_TYPE {
 declare const SERVERLESS: SERVERLESS_TYPE;
 
 export function generateServerlessFunctions(models: Model[]): SERVERLESS_TYPE['functions'] {
-    const lines = [
-        `
-        const functions = {};
-functions.migrate = new Impl.HttpRpcServer(SERVERLESS, () => import('@motherboard/Migrate'), 'Migrate', 'migrate').handler;`,
-    ];
+    const lines = [`const functions = {
+        migrate: new Impl.HttpRpcServer({ioProvider: () => SERVERLESS.ioConf, func: require('@motherboard/migrate').migrate }).handler
+    };`];
     models.sort((a, b) => a.qualifiedName.localeCompare(b.qualifiedName));
     for (const model of models) {
         if (model.archetype !== 'ActiveRecord' && model.archetype !== 'Gateway') {
             continue;
         }
-        const services = [...model.staticProperties.map(p => p.name), ...model.staticMethods.map(m => m.name)]
+        const services = [
+            ...model.staticProperties.map((p) => p.name),
+            ...model.staticMethods.map((m) => m.name),
+        ];
         for (const service of services) {
             const className = path.basename(model.qualifiedName);
             lines.push(
                 [
-                    `functions.${service} = new Impl.HttpRpcServer(SERVERLESS, `,
+                    `functions.${service} = Impl.HttpRpcServer.create(() => SERVERLESS.ioConf, `,
                     `() => import('@motherboard/${model.qualifiedName}'), `,
                     `'${className}', '${service}').handler;`,
                 ].join(''),
