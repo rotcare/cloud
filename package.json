@@ -5,9 +5,5 @@
         "type": "git",
         "url": "https://github.com/rotcare/cloud.git"
     },
-    "main": "src/index.ts",
-    "peerDependencies": {
-        "@rotcare/io": "*",
-        "@rotcare/codegen": "*"
-    }
+    "main": "index.ts"
 }
