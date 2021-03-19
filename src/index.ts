@@ -1,6 +1,7 @@
 import type { IoConf } from '@rotcare/io';
 import { Model } from '@rotcare/codegen';
 import * as path from 'path';
+import { HttpRpcServer } from '@rotcare/io/src/Impl';
 
 // 对象存储，用 http/https 提供 html 页面和 js 源代码
 export interface ObjectStorage {
@@ -34,16 +35,10 @@ export interface Cloud {
     apiGateway: ApiGateway;
 }
 
-export interface SERVERLESS_TYPE {
-    ioConf: IoConf;
-    functions: Record<string, Function>;
-}
-
-declare const SERVERLESS: SERVERLESS_TYPE;
-
-export function generateServerlessFunctions(models: Model[]): SERVERLESS_TYPE['functions'] {
-    const lines = [`const functions = {
-        migrate: new Impl.HttpRpcServer({ioProvider: () => SERVERLESS.ioConf, func: require('@motherboard/migrate').migrate }).handler
+export function generateHttpRpcServers(models: Model[]): Record<string, HttpRpcServer> {
+    const lines = [`
+    const httpRpcServers = {
+        migrate: new Impl.HttpRpcServer({ func: require('@motherboard/migrate').migrate })
     };`];
     models.sort((a, b) => a.qualifiedName.localeCompare(b.qualifiedName));
     for (const model of models) {
@@ -58,17 +53,13 @@ export function generateServerlessFunctions(models: Model[]): SERVERLESS_TYPE['f
             const className = path.basename(model.qualifiedName);
             lines.push(
                 [
-                    `functions.${service} = Impl.HttpRpcServer.create(() => SERVERLESS.ioConf, `,
+                    `httpRpcServers.${service} = Impl.HttpRpcServer.create(`,
                     `() => import('@motherboard/${model.qualifiedName}'), `,
-                    `'${className}', '${service}').handler;`,
+                    `'${className}', '${service}');`,
                 ].join(''),
             );
         }
     }
-    lines.push('return functions;');
+    lines.push('return httpRpcServers;');
     return lines.join('\n') as any;
-}
-
-export function registerServerless(options: typeof SERVERLESS) {
-    Object.assign(SERVERLESS, options);
 }
